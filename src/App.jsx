@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Truck, DoorOpen, CheckCircle2, Info, AlertTriangle, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Truck, DoorOpen, CheckCircle2, Info, AlertTriangle, MapPin, Package, ClipboardList } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Catalog from './Catalog.jsx';
+import { CATEGORIES, cargarCatalogo, guardarCatalogo } from './catalog.js';
 
 const TRUCK = {
   length: 7,
@@ -9,13 +11,6 @@ const TRUCK = {
   maxWeight: 11000,
 };
 const TRUCK_VOLUME = TRUCK.length * TRUCK.width * TRUCK.height;
-
-const CATEGORIES = {
-  base: { label: 'Sacos · base / pesado', swatch: '#8a5a2b' },
-  medio: { label: 'Cajas medianas', swatch: '#2f6f9f' },
-  fragil: { label: 'Frágil · sin peso encima', swatch: '#c1453d' },
-  aves: { label: 'Aves vivas · ventilación', swatch: '#c99a2e' },
-};
 
 const sections = [
   { id: 4, label: 'Sección 4', stop: 'Pauza · última entrega', pos: 'junto a cabina' },
@@ -129,6 +124,10 @@ function CheckRow({ tone = 'ok', children }) {
 
 export default function CargoPlanner() {
   const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState('plan'); // 'plan' | 'catalogo'
+  const [productos, setProductos] = useState(() => cargarCatalogo());
+
+  useEffect(() => { guardarCatalogo(productos); }, [productos]);
 
   const grand = sections.reduce((acc, s) => {
     const t = sectionTotals(s.id);
@@ -146,13 +145,34 @@ export default function CargoPlanner() {
   return (
     <div className="min-h-screen w-full bg-[#f3ecdf] text-[#3a2c1d] p-3 sm:p-6 font-sans">
       <header className="max-w-5xl mx-auto mb-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#8a5a2b] font-semibold">Manifiesto de carga · ejemplo</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-[#8a5a2b] font-semibold">Plan de carga</p>
         <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Isuzu FRR CL — Lima (VMT) a Pauza</h1>
         <p className="text-xs sm:text-sm text-[#8a7355] mt-1 font-mono">
           Carrocería 7.00 × 2.40 × 2.20 m · Capacidad reforzada 11,000 kg
         </p>
       </header>
 
+      <nav className="max-w-5xl mx-auto mb-4 flex gap-1 bg-white/50 border border-[#d9c7a8] rounded-xl p-1 w-fit">
+        {[
+          { id: 'plan', label: 'Plan de carga', Icon: ClipboardList },
+          { id: 'catalogo', label: `Catálogo (${productos.length})`, Icon: Package },
+        ].map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              tab === id ? 'bg-[#8a5a2b] text-white' : 'text-[#6b4c2a] hover:bg-[#e7dcc6]'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === 'catalogo' ? (
+        <Catalog productos={productos} setProductos={setProductos} />
+      ) : (
+      <>
       <section className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <StatCard label="Peso cargado" value={grand.weight} max={TRUCK.maxWeight} unit="kg" pct={weightPct} />
         <StatCard label="Volumen ocupado" value={grand.volume} max={TRUCK_VOLUME} unit="m³" pct={volumePct} decimals={1} />
@@ -256,9 +276,13 @@ export default function CargoPlanner() {
         <CheckRow>Jaulas de aves vivas en capa superior, con ventilación y sin apilamiento</CheckRow>
         <CheckRow tone="info">Orden de carga: Sección 1 (puerta) = primera entrega → Sección 4 (cabina) = Pauza, última entrega</CheckRow>
       </section>
+      </>
+      )}
 
       <footer className="max-w-5xl mx-auto text-[11px] sm:text-xs text-[#8a7355] pb-4">
-        Datos de ejemplo para mostrar el funcionamiento. Siguiente paso: reemplazar esta lista con el catálogo real de productos (pesos y volúmenes exactos) para que el sistema calcule la distribución automáticamente en cada viaje.
+        {tab === 'catalogo'
+          ? 'El catálogo se autoguarda en este navegador. Usa “Exportar” para respaldar la base de datos en un archivo JSON y “Importar” para restaurarla en otra PC.'
+          : 'El plan de carga aún usa datos de ejemplo. Próximo paso: armar el viaje eligiendo productos del catálogo para que el sistema calcule la distribución automáticamente.'}
       </footer>
     </div>
   );
