@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Trash2, Settings2, ChevronDown, ChevronUp, Box } from 'lucide-react';
+import { Plus, Trash2, Settings2, ChevronDown, ChevronUp, Box, Eraser } from 'lucide-react';
 import { CATEGORIES, pesoCargaDe } from './catalog.js';
 import {
-  SECTION_IDS, DESTINOS_DEFECTO, generarDistribucion, weightOf,
+  SECTION_IDS, generarDistribucion, viajeEjemplo,
 } from './planModel.js';
 import PlanView from './PlanView.jsx';
 
@@ -10,9 +10,7 @@ const inputCls =
   'rounded-lg border border-[#d9c7a8] bg-white px-3 py-2 text-sm text-[#3a2c1d] ' +
   'focus:outline-none focus:ring-2 focus:ring-[#8a5a2b]/40';
 
-export default function TripBuilder({ productos }) {
-  const [destinos, setDestinos] = useState(DESTINOS_DEFECTO);
-  const [lineas, setLineas] = useState([]);
+export default function TripBuilder({ productos, destinos, setDestinos, lineas, setLineas }) {
   const [sel, setSel] = useState({ productoId: '', cantidad: 1, destino: 'auto' });
   const [verRuta, setVerRuta] = useState(false);
 
@@ -38,6 +36,14 @@ export default function TripBuilder({ productos }) {
 
   function quitar(id) {
     setLineas((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  function vaciarViaje() {
+    if (lineas.length === 0 || window.confirm('¿Vaciar todo el viaje?')) setLineas([]);
+  }
+
+  function cargarEjemplo() {
+    setLineas(viajeEjemplo(productos));
   }
 
   function destinoLabel(destino) {
@@ -121,9 +127,14 @@ export default function TripBuilder({ productos }) {
       {/* Lista de líneas del viaje */}
       {lineas.length > 0 && (
         <div className="mb-4 bg-white/60 border border-[#d9c7a8] rounded-xl p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-2">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#6b4c2a]">Carga del viaje ({lineas.length})</h3>
-            <span className="text-xs font-mono text-[#8a7355]">{pesoLineas.toFixed(0)} kg en total</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-[#8a7355]">{pesoLineas.toFixed(0)} kg en total</span>
+              <button onClick={vaciarViaje} className="flex items-center gap-1 text-[11px] font-semibold text-[#c1453d] hover:bg-[#f3d9d6] rounded px-1.5 py-1">
+                <Eraser className="w-3.5 h-3.5" /> Vaciar
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             {lineas.map((l) => {
@@ -149,7 +160,10 @@ export default function TripBuilder({ productos }) {
       {lineas.length === 0 && productos.length > 0 && (
         <div className="text-center text-[#8a7355] text-sm py-6 mb-4 border border-dashed border-[#d9c7a8] rounded-xl">
           <Box className="w-6 h-6 mx-auto mb-2 opacity-60" />
-          Agrega productos arriba y el sistema generará la distribución automáticamente.
+          <p>Agrega productos arriba y el sistema generará la distribución automáticamente.</p>
+          <button onClick={cargarEjemplo} className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-[#8a5a2b]">
+            <Plus className="w-4 h-4" /> Cargar viaje de ejemplo
+          </button>
         </div>
       )}
 

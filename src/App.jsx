@@ -4,11 +4,17 @@ import Catalog from './Catalog.jsx';
 import TripBuilder from './TripBuilder.jsx';
 import Welcome from './Welcome.jsx';
 import { cargarCatalogo, guardarCatalogo } from './catalog.js';
+import { DESTINOS_DEFECTO, viajeEjemplo } from './planModel.js';
 
 export default function CargoPlanner() {
   const [mostrarBienvenida, setMostrarBienvenida] = useState(true);
   const [tab, setTab] = useState('viaje'); // 'viaje' | 'catalogo'
   const [productos, setProductos] = useState(() => cargarCatalogo());
+
+  // Estado del viaje a nivel App: se conserva al cambiar de pestaña y arranca
+  // con un viaje de ejemplo precargado (demo).
+  const [destinos, setDestinos] = useState(DESTINOS_DEFECTO);
+  const [lineas, setLineas] = useState(() => viajeEjemplo(productos));
 
   useEffect(() => { guardarCatalogo(productos); }, [productos]);
 
@@ -47,7 +53,13 @@ export default function CargoPlanner() {
 
       {tab === 'catalogo'
         ? <Catalog productos={productos} setProductos={setProductos} />
-        : <TripBuilder productos={productos} />}
+        : <TripBuilder
+            productos={productos}
+            destinos={destinos}
+            setDestinos={setDestinos}
+            lineas={lineas}
+            setLineas={setLineas}
+          />}
 
       <footer className="max-w-5xl mx-auto text-[11px] sm:text-xs text-[#8a7355] pb-4 mt-2">
         {tab === 'catalogo'

@@ -79,6 +79,43 @@ export function grandTotals(plan) {
   }, { weight: 0, volume: 0 });
 }
 
+// ── Viaje de ejemplo (para la demo) ──────────────────────────────────────────
+// Reparte productos en las 4 paradas mostrando todas las categorías y dejando
+// el camión bien lleno pero dentro de límites (~9,200 kg de 11,000).
+const VIAJE_EJEMPLO = [
+  { nombre: 'Arroz Casserita', cantidad: 20, destino: 1 },
+  { nombre: 'Aceite Primor', cantidad: 35, destino: 1 },
+  { nombre: 'Gaseosa', cantidad: 20, destino: 1 },
+
+  { nombre: 'Azúcar rubia', cantidad: 16, destino: 2 },
+  { nombre: 'Lejía Clorox', cantidad: 40, destino: 2 },
+  { nombre: 'Huevos', cantidad: 25, destino: 2 },
+
+  { nombre: 'Arroz Casserita', cantidad: 18, destino: 3 },
+  { nombre: 'Aceite La Patrona', cantidad: 35, destino: 3 },
+  { nombre: 'Abarrotes varios', cantidad: 20, destino: 3 },
+
+  { nombre: 'Arroz Casserita', cantidad: 20, destino: 4 },
+  { nombre: 'Azúcar rubia', cantidad: 6, destino: 4 },
+  { nombre: 'Abarrotes varios', cantidad: 50, destino: 4 },
+  { nombre: 'Jaulas pollitos BB vivos', cantidad: 20, destino: 4 },
+];
+
+// Construye las líneas del viaje de ejemplo a partir del catálogo actual,
+// emparejando por nombre (omite lo que no exista en el catálogo).
+export function viajeEjemplo(productos) {
+  const idPorNombre = {};
+  for (const p of productos) if (!(p.nombre in idPorNombre)) idPorNombre[p.nombre] = p.id;
+  return VIAJE_EJEMPLO
+    .filter((l) => idPorNombre[l.nombre])
+    .map((l, i) => ({
+      id: `ej-${i}`,
+      productoId: idPorNombre[l.nombre],
+      cantidad: l.cantidad,
+      destino: l.destino,
+    }));
+}
+
 // ── Algoritmo principal ──────────────────────────────────────────────────────
 // lineas: [{ productoId, cantidad, destino }]  destino = 1..4 o 'auto'
 // productosById: { [id]: producto }
