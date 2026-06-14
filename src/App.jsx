@@ -2,19 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { Package, ClipboardList } from 'lucide-react';
 import Catalog from './Catalog.jsx';
 import TripBuilder from './TripBuilder.jsx';
+import Welcome from './Welcome.jsx';
 import { cargarCatalogo, guardarCatalogo } from './catalog.js';
 
 export default function CargoPlanner() {
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(true);
   const [tab, setTab] = useState('viaje'); // 'viaje' | 'catalogo'
   const [productos, setProductos] = useState(() => cargarCatalogo());
 
   useEffect(() => { guardarCatalogo(productos); }, [productos]);
 
+  if (mostrarBienvenida) {
+    return <Welcome onComenzar={() => setMostrarBienvenida(false)} />;
+  }
+
   return (
     <div className="min-h-screen w-full bg-[#f3ecdf] text-[#3a2c1d] p-3 sm:p-6 font-sans">
       <header className="max-w-5xl mx-auto mb-4">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#8a5a2b] font-semibold">Plan de carga</p>
-        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Isuzu FRR CL — Lima (VMT) a Pauza</h1>
+        <button onClick={() => setMostrarBienvenida(true)} className="text-left group" title="Volver al inicio">
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8a5a2b] font-semibold group-hover:underline">Plan de carga · inicio</p>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Isuzu FRR CL — Lima (VMT) a Pauza</h1>
+        </button>
         <p className="text-xs sm:text-sm text-[#8a7355] mt-1 font-mono">
           Carrocería 7.00 × 2.40 × 2.20 m · Capacidad reforzada 11,000 kg
         </p>
