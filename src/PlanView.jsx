@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Truck, DoorOpen, CheckCircle2, Info, AlertTriangle, MapPin, XCircle, LayoutGrid, Box } from 'lucide-react';
+import { Truck, DoorOpen, CheckCircle2, Info, AlertTriangle, MapPin, XCircle, LayoutGrid, Box, FileDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CATEGORIES } from './catalog.js';
 import {
@@ -7,6 +7,7 @@ import {
   weightOf, volumeOf, sectionTotals, verificarPlan,
 } from './planModel.js';
 import Truck3D from './Truck3D.jsx';
+import { descargarPDF } from './pdf.js';
 
 function StatCard({ label, value, max, unit, pct, decimals = 0 }) {
   const barColor = pct > 95 ? '#c1453d' : pct > 85 ? '#c99a2e' : '#4f7942';
@@ -87,21 +88,30 @@ export default function PlanView({ plan, destinos }) {
         <StatCard label="Volumen ocupado" value={grand.volume} max={TRUCK_VOLUME} unit="m³" pct={volumePct} decimals={1} />
       </section>
 
-      <div className="flex gap-1 mb-3 bg-white/50 border border-[#d9c7a8] rounded-xl p-1 w-fit">
-        {[
-          { id: '2d', label: 'Vista 2D', Icon: LayoutGrid },
-          { id: '3d', label: 'Vista 3D', Icon: Box },
-        ].map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setVista(id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
-              vista === id ? 'bg-[#8a5a2b] text-white' : 'text-[#6b4c2a] hover:bg-[#e7dcc6]'
-            }`}
-          >
-            <Icon className="w-4 h-4" /> {label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div className="flex gap-1 bg-white/50 border border-[#d9c7a8] rounded-xl p-1 w-fit">
+          {[
+            { id: '2d', label: 'Vista 2D', Icon: LayoutGrid },
+            { id: '3d', label: 'Vista 3D', Icon: Box },
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setVista(id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+                vista === id ? 'bg-[#8a5a2b] text-white' : 'text-[#6b4c2a] hover:bg-[#e7dcc6]'
+              }`}
+            >
+              <Icon className="w-4 h-4" /> {label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => descargarPDF(plan, destinos, verif)}
+          disabled={!algoCargado}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white bg-[#4f7942] disabled:opacity-40"
+        >
+          <FileDown className="w-4 h-4" /> Descargar PDF
+        </button>
       </div>
 
       {vista === '3d' && <Truck3D plan={plan} destinos={destinos} />}
