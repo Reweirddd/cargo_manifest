@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Truck, DoorOpen, CheckCircle2, Info, AlertTriangle, MapPin, XCircle } from 'lucide-react';
+import { Truck, DoorOpen, CheckCircle2, Info, AlertTriangle, MapPin, XCircle, LayoutGrid, Box } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CATEGORIES } from './catalog.js';
 import {
   TRUCK, TRUCK_VOLUME, layers, SECTION_DISPLAY, sectionsMeta,
   weightOf, volumeOf, sectionTotals, verificarPlan,
 } from './planModel.js';
+import Truck3D from './Truck3D.jsx';
 
 function StatCard({ label, value, max, unit, pct, decimals = 0 }) {
   const barColor = pct > 95 ? '#c1453d' : pct > 85 ? '#c99a2e' : '#4f7942';
@@ -65,6 +66,7 @@ function CheckRow({ tone = 'ok', children }) {
 
 export default function PlanView({ plan, destinos }) {
   const [selected, setSelected] = useState(null);
+  const [vista, setVista] = useState('2d'); // '2d' | '3d'
   const meta = sectionsMeta(destinos);
   const verif = verificarPlan(plan);
   const { grand, weightPct, volumePct, secW, checks } = verif;
@@ -85,7 +87,26 @@ export default function PlanView({ plan, destinos }) {
         <StatCard label="Volumen ocupado" value={grand.volume} max={TRUCK_VOLUME} unit="m³" pct={volumePct} decimals={1} />
       </section>
 
-      <section className="bg-white/60 border-2 border-[#8a5a2b] rounded-2xl p-3 sm:p-5 mb-4 relative overflow-hidden">
+      <div className="flex gap-1 mb-3 bg-white/50 border border-[#d9c7a8] rounded-xl p-1 w-fit">
+        {[
+          { id: '2d', label: 'Vista 2D', Icon: LayoutGrid },
+          { id: '3d', label: 'Vista 3D', Icon: Box },
+        ].map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setVista(id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+              vista === id ? 'bg-[#8a5a2b] text-white' : 'text-[#6b4c2a] hover:bg-[#e7dcc6]'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {vista === '3d' && <Truck3D plan={plan} destinos={destinos} />}
+
+      <section className={`bg-white/60 border-2 border-[#8a5a2b] rounded-2xl p-3 sm:p-5 mb-4 relative overflow-hidden ${vista === '3d' ? 'hidden' : ''}`}>
         {algoCargado && (
           <div
             className="absolute -top-2 right-2 sm:right-4 -rotate-6 border-[3px] rounded-md px-2 sm:px-3 py-0.5 sm:py-1 font-bold uppercase text-[9px] sm:text-xs tracking-widest opacity-80 bg-[#f3ecdf]"
