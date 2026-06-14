@@ -30,9 +30,10 @@ export const CATEGORY_KEYS = Object.keys(CATEGORIES);
 //   restriccion   nota de apilado, ej. "Sin peso encima"
 //   fuente        URL/origen donde se obtuvo la medida (opcional)
 
-export function nuevoProducto(parcial = {}) {
+export function nuevoProducto(parcial) {
+  const p = parcial || {};
   return {
-    id: parcial.id ?? crypto.randomUUID(),
+    id: p.id ?? nuevoId(),
     nombre: '',
     marca: '',
     presentacion: '',
@@ -46,8 +47,14 @@ export function nuevoProducto(parcial = {}) {
     volumenManual: 0,
     restriccion: '',
     fuente: '',
-    ...parcial,
+    ...p,
   };
+}
+
+// ID único con respaldo si crypto.randomUUID no está disponible.
+function nuevoId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 // Volumen efectivo (m³): manual si está marcado, si no largo×ancho×alto.
