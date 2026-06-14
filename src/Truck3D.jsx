@@ -2,12 +2,26 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CATEGORIES } from './catalog.js';
-import { TRUCK, SECTION_IDS, totalsOf } from './planModel.js';
+import { TRUCK, SECTION_IDS } from './planModel.js';
 
 const { length: L, width: W, height: H } = TRUCK;
 const SECTION_LEN = L / 4;
-const LAYER_H = H / 3;
-const Y_INDEX = { piso: 0, medio: 1, superior: 2 };
+
+// Proporciones (x: largo, y: alto, z: ancho) de cada unidad según su categoría,
+// para deducir una forma realista a partir solo del volumen.
+const RATIOS = {
+  base:   { x: 1.7, y: 0.4, z: 1.0 },  // saco: ancho y bajo
+  medio:  { x: 1.0, y: 0.9, z: 0.85 }, // caja: casi cúbica
+  fragil: { x: 1.0, y: 0.85, z: 0.85 },
+  aves:   { x: 1.2, y: 0.7, z: 1.0 },  // jaba: alargada
+};
+
+function unidad(category, volume) {
+  const r = RATIOS[category] || RATIOS.medio;
+  const v = volume > 0 ? volume : 0.02;
+  const s = Math.cbrt(v / (r.x * r.y * r.z));
+  return { uL: r.x * s, uH: r.y * s, uW: r.z * s };
+}
 
 // Etiqueta de texto como sprite (siempre mira a la cámara).
 function crearEtiqueta(texto) {
@@ -169,41 +183,84 @@ export default function Truck3D({ plan, destinos }) {
     vaciar(t.cargoGroup);
     vaciar(t.labelGroup);
 
-    const capCelda = SECTION_LEN * W * LAYER_H; // capacidad geométrica de una celda
+    const GAP = 0.02;
+    const H_USABLE = H * 0.98;
+    const CELL_X = SECTION_LEN * 0.92;
+    const CELL_Z = W * 0.92;
+    const MAX_BOXES = 2600; // tope de seguridad para no saturar
+    let total = 0;
+
+    // Tonos por categoría para que la pila no se vea como un bloque sólido.
+    const palette = {};
+    const matDe = (swatch) => {
+      if (!palette[swatch]) {
+        palette[swatch] = [0, 1, 2, 3].map((i) => {
+          const c = new THREE.Color(swatch);
+          c.offsetHSL(0, 0, (i - 1.5) * 0.045);
+          return new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
+        });
+      }
+      const arr = palette[swatch];
+      return arr[(Math.random() * arr.length) | 0];
+    };
 
     for (const id of SECTION_IDS) {
       const cx = centerXDeSeccion(id);
 
-      // Etiqueta de la sección
       const stop = (destinos && destinos[id - 1]) || '';
       const etiqueta = crearEtiqueta(`S${id}${stop ? ' · ' + stop : ''}`);
       etiqueta.position.set(cx, H + 0.5, 0);
       t.labelGroup.add(etiqueta);
 
+      // Arma las pilas de la sección (piso → medio → superior) y mide su altura.
+      const pilas = [];
+      let totalH = 0;
       for (const capa of ['piso', 'medio', 'superior']) {
-        const items = plan[id][capa];
-        if (!items || items.length === 0) continue;
-        const vol = totalsOf(items).volume;
-        if (vol <= 0) continue;
+        for (const item of plan[id][capa]) {
+          if (!item || item.qty <= 0) continue;
+          let { uL, uH, uW } = unidad(item.category, item.unitVolume);
+          uL = Math.min(uL, CELL_X);
+          uW = Math.min(uW, CELL_Z);
+          const nx = Math.max(1, Math.floor((CELL_X + GAP) / (uL + GAP)));
+          const nz = Math.max(1, Math.floor((CELL_Z + GAP) / (uW + GAP)));
+          const ny = Math.ceil(item.qty / (nx * nz));
+          pilas.push({ item, uL, uH, uW, nx, nz });
+          totalH += ny * (uH + GAP);
+        }
+      }
+      if (pilas.length === 0) continue;
 
-        const frac = Math.max(0.18, Math.min(vol / capCelda, 0.97));
-        const boxH = LAYER_H * frac;
-        const yBase = LAYER_H * Y_INDEX[capa];
+      // Si la sección sobrepasa la altura útil, se comprime para que entre.
+      const f = totalH > H_USABLE ? H_USABLE / totalH : 1;
+      let yCursor = 0;
 
-        const color = CATEGORIES[items[0].category]?.swatch || '#888888';
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(SECTION_LEN * 0.86, boxH, W * 0.86),
-          new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.92 })
-        );
-        mesh.position.set(cx, yBase + boxH / 2, 0);
-        t.cargoGroup.add(mesh);
+      for (const st of pilas) {
+        const { item, uL, uW, nx, nz } = st;
+        const uH = st.uH * f;
+        const swatch = CATEGORIES[item.category]?.swatch || '#888888';
+        const geom = new THREE.BoxGeometry(uL * 0.93, uH * 0.93, uW * 0.93);
 
-        const wire = new THREE.LineSegments(
-          new THREE.EdgesGeometry(mesh.geometry),
-          new THREE.LineBasicMaterial({ color: 0x3a2c1d, transparent: true, opacity: 0.3 })
-        );
-        wire.position.copy(mesh.position);
-        t.cargoGroup.add(wire);
+        const gridW = nx * uL + (nx - 1) * GAP;
+        const gridD = nz * uW + (nz - 1) * GAP;
+        const startX = cx - gridW / 2 + uL / 2;
+        const startZ = -gridD / 2 + uW / 2;
+        const perLayer = nx * nz;
+
+        for (let i = 0; i < item.qty && total < MAX_BOXES; i++) {
+          const col = i % nx;
+          const dep = Math.floor(i / nx) % nz;
+          const row = Math.floor(i / perLayer);
+          const m = new THREE.Mesh(geom, matDe(swatch));
+          m.position.set(
+            startX + col * (uL + GAP),
+            yCursor + row * (uH + GAP) + uH / 2,
+            startZ + dep * (uW + GAP)
+          );
+          t.cargoGroup.add(m);
+          total++;
+        }
+        const ny = Math.ceil(item.qty / perLayer);
+        yCursor += ny * (uH + GAP);
       }
     }
   }, [plan, destinos]);
@@ -213,7 +270,7 @@ export default function Truck3D({ plan, destinos }) {
       <div ref={mountRef} className="w-full" style={{ height: 380 }} />
       <p className="text-[11px] sm:text-xs text-[#8a7355] mt-2 text-center">
         Arrastra para girar · rueda/pellizco para acercar · la pared marrón es la cabina (S4); la puerta queda al otro extremo (S1).
-        La altura de cada bloque representa cuánto espacio ocupa la carga en esa celda.
+        Cada bloque es un saco/caja individual, apilado base → medio → frágil, con su forma aproximada según volumen y categoría.
       </p>
     </div>
   );
